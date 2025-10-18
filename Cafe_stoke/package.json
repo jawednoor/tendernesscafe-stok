@@ -1,0 +1,22 @@
+{
+  "name": "cafe-stock-management",
+  "version": "1.0.0",
+  "description": "نظام إدارة مخزون الكافيه مع Google Sheets",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "cafe",
+    "stock",
+    "management",
+    "google-sheets",
+    "barcode"
+  ],
+  "author": "Cafe Stock Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

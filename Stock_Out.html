@@ -594,6 +594,20 @@ barcodeInput.addEventListener('input', function() {
             document.getElementById('quantity').value = '';
             document.getElementById('unit').value = '';
             document.getElementById('barcodeInput').value = '';
+            // إذا كان حقل البحث فارغ، أظهر كل المنتجات في القائمة المنسدلة
+            const barcodeInput = document.getElementById('barcodeInput');
+            const productSelect = document.getElementById('product');
+            if (!barcodeInput.value.trim()) {
+                productSelect.innerHTML = '<option value="">اختر المنتج</option>';
+                productsData.forEach(product => {
+                    const option = document.createElement('option');
+                    option.value = product.name;
+                    option.textContent = product.name;
+                    option.dataset.barcode = product.barcode || '';
+                    option.dataset.unit = product.unit || 'قطعة';
+                    productSelect.appendChild(option);
+                });
+            }
         }
 
         // دالة إرسال البيانات إلى Google Sheets

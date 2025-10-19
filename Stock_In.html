@@ -122,6 +122,20 @@
         </div>
     </div>
     <script>
+        // جلب رابط Google Apps Script من config.json وتخزينه في localStorage إذا لم يكن موجوداً
+        window.addEventListener('DOMContentLoaded', async function() {
+            if (!localStorage.getItem('googleAppsScriptUrl')) {
+                try {
+                    const res = await fetch('config.json');
+                    const config = await res.json();
+                    if (config.googleAppsScriptUrl) {
+                        localStorage.setItem('googleAppsScriptUrl', config.googleAppsScriptUrl);
+                    }
+                } catch (e) {
+                    console.error('فشل في جلب إعدادات Google Apps Script من config.json:', e);
+                }
+            }
+        });
         // تعيين التاريخ الحالي تلقائياً
         document.getElementById('date').value = new Date().toISOString().split('T')[0];
 
@@ -135,22 +149,16 @@
         async function loadProjects() {
             const projectSelect = document.getElementById('projectName');
             try {
-                // تحقق من صحة رابط Google Apps Script عبر السيرفر
-                const checkRes = await fetch('/api/check-script-url');
-                const checkData = await checkRes.json();
-                if (!checkData.success || !checkData.url) {
-                    throw new Error('لم يتم تعيين رابط Google Apps Script أو الرابط غير صحيح. يرجى الذهاب إلى صفحة الإعدادات أولاً.');
+                const GOOGLE_SCRIPT_URL = localStorage.getItem('googleAppsScriptUrl');
+                if (!GOOGLE_SCRIPT_URL) {
+                    showErrorModal();
+                    return;
                 }
-                const GOOGLE_SCRIPT_URL = checkData.url;
-                // إظهار رسالة التحميل
                 projectSelect.innerHTML = '<option value="">جاري التحميل...</option>';
-                // استدعاء Google Apps Script للمشاريع من Stock_Out
                 const response = await fetch(GOOGLE_SCRIPT_URL + '?type=stock_out_projects');
                 const result = await response.json();
                 if (result.success && result.data) {
-                    // مسح الخيارات الحالية
                     projectSelect.innerHTML = '<option value="">اختر المشروع</option>';
-                    // إضافة المشاريع
                     result.data.forEach(project => {
                         const option = document.createElement('option');
                         option.value = project;

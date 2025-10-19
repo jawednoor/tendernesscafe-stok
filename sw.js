@@ -2,9 +2,9 @@
 const CACHE_NAME = 'cafe-stock-v1.0.0';
 const urlsToCache = [
   '/',
-  '/index_Cafe_stoke.html',
+  '/index.html',
   '/styles.css',
-  '/img/logo_white.jpg',
+  '/img/logo.png',
   '/Stock_In.html',
   '/Stock_Out.html',
   '/0541.html',

@@ -19,7 +19,7 @@
    node Cafe_stoke/server.js
    ```
 3. افتح أحد الروابط التالية في المتصفح:
-   - http://localhost:3000/index_Cafe_stoke.html
+   - http://localhost:3000/index.html
    - http://localhost:3000/Stock_In.html
    - http://localhost:3000/Stock_Out.html
 
@@ -33,7 +33,7 @@
 - `config.json` : إعدادات الربط مع Google Sheets.
 - `Stock_In.html` : صفحة إدخال المنتجات.
 - `Stock_Out.html` : صفحة تصدير المنتجات.
-- `index_Cafe_stoke.html` : الصفحة الرئيسية.
+- `index.html` : الصفحة الرئيسية.
 
 ## المساهمة
 للمساهمة أو الإبلاغ عن مشكلة، يرجى فتح Issue أو Pull Request على المستودع.

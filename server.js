@@ -255,8 +255,8 @@ const server = http.createServer((req, res) => {
     // ========================================
     
     // الصفحة الرئيسية
-    if (pathname === '/' || pathname === '/index_Cafe_stoke.html') {
-        serveStaticFile(res, path.join(__dirname, 'index_Cafe_stoke.html'));
+    if (pathname === '/' || pathname === '/index.html') {
+        serveStaticFile(res, path.join(__dirname, 'index.html'));
         return;
     }
 
@@ -318,7 +318,7 @@ server.listen(PORT, () => {
     console.log(`   GET    /api/status          - حالة السيرفر`);
     console.log('');
     console.log('📄 الصفحات:');
-    console.log(`   http://localhost:${PORT}/index_Cafe_stoke.html`);
+    console.log(`   http://localhost:${PORT}/index.html`);
     console.log(`   http://localhost:${PORT}/0541.html`);
     console.log(`   http://localhost:${PORT}/Stock_In.html`);
     console.log(`   http://localhost:${PORT}/Stock_Out.html`);

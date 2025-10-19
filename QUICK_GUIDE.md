@@ -55,7 +55,7 @@
 
 ### 6️⃣ البدء:
 ```
-- افتح index_Cafe_stoke.html
+- افتح index.html
 - استمتع! 🎉
 ```
 

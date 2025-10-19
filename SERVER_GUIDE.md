@@ -43,7 +43,7 @@ http://localhost:3000
 
 أو الصفحات المباشرة:
 ```
-http://localhost:3000/index_Cafe_stoke.html  (الصفحة الرئيسية)
+http://localhost:3000/index.html  (الصفحة الرئيسية)
 http://localhost:3000/0541.html              (صفحة الإعدادات)
 http://localhost:3000/Stock_In.html          (إدخال المخزون)
 http://localhost:3000/Stock_Out.html         (إخراج المخزون)

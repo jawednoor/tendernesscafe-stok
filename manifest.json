@@ -1,0 +1,51 @@
+{
+  "name": "نظام إدارة مخزون الكافيه",
+  "short_name": "Cafe Stock",
+  "description": "نظام إدارة مخزون احترافي للكافيه مع دعم الباركود والمشاريع",
+  "start_url": "/index_Cafe_stoke.html",
+  "display": "standalone",
+  "background_color": "#1a7f8b",
+  "theme_color": "#20B2AA",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "img/logo_white.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "img/logo_white.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "توريد المخزون",
+      "short_name": "توريد",
+      "description": "إدخال مخزون جديد",
+      "url": "/Stock_In.html",
+      "icons": [{ "src": "img/logo_white.jpg", "sizes": "96x96" }]
+    },
+    {
+      "name": "تصدير المخزون",
+      "short_name": "تصدير",
+      "description": "إخراج مخزون",
+      "url": "/Stock_Out.html",
+      "icons": [{ "src": "img/logo_white.jpg", "sizes": "96x96" }]
+    },
+    {
+      "name": "الإعدادات",
+      "short_name": "إعدادات",
+      "description": "إعدادات النظام",
+      "url": "/0541.html",
+      "icons": [{ "src": "img/logo_white.jpg", "sizes": "96x96" }]
+    }
+  ]
+}

@@ -1,15 +1,460 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redirecting...</title>
-    <script>
-        // Redirect to index_Cafe_stoke.html
-        window.location.href = './Cafe_stoke/index_Cafe_stoke.html';
-    </script>
-</head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1a7f8b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="description" content="نظام إدارة مخزون احترافي للكافيه مع دعم الباركود والمشاريع">
+    <meta name="keywords" content="مخزون, كافيه, إدارة, باركود, مشاريع">
+    <meta name="author" content="Cafe Stock Management System">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="img/logo_white.jpg">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/logo_white.jpg">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/jpeg" href="img/logo_white.jpg">
+
+    <title>Cafe Stock - نظام إدارة المخزون</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
 <body>
-    <p>جاري تحويلك إلى الصفحة الرئيسية...</p>
+    <div class="main-container">
+        <div class="welcome-card">
+            <div class="logo-container">
+                <img src="img/logo_white.jpg" alt="شعار الكافيه">
+            </div>
+            
+            <h1 class="welcome-title">نظام إدارة المخزون</h1>
+            <p class="welcome-subtitle">إدارة احترافية لمخزون الكافيه</p>
+            
+            <div class="buttons-container">
+                <a href="Stock_In.html" class="nav-button btn-stock-in">
+                    <span class="btn-icon"></span>
+                    <span>توريد المخزون</span>
+                </a>
+                
+                <a href="Stock_Out.html" class="nav-button btn-stock-out">
+                    <span class="btn-icon"></span>
+                    <span>تصدير المخزون</span>
+                </a>
+            </div>
+            
+            <div class="footer-info">
+                <p>Cafe Stock Management System</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- إشعار تثبيت PWA -->
+    <div id="installPrompt" class="install-prompt" style="display: none;">
+        <div class="install-content">
+            <div class="install-icon">📱</div>
+            <div class="install-text">
+                <h3>تثبيت التطبيق</h3>
+                <p>قم بتثبيت تطبيق Cafe Stock للوصول السريع والعمل دون اتصال</p>
+            </div>
+            <div class="install-buttons">
+                <button id="installBtn" class="install-btn">تثبيت</button>
+                <button id="dismissBtn" class="dismiss-btn">لاحقاً</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- مؤشر حالة الاتصال -->
+    <div id="connectionStatus" class="connection-status">
+        <span id="statusIcon">📶</span>
+        <span id="statusText">متصل</span>
+    </div>
+
+    <style>
+        /* إشعار تثبيت PWA */
+        .install-prompt {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #20B2AA, #1a7f8b);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            animation: slideUp 0.5s ease-out;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .install-content {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            gap: 15px;
+        }
+
+        .install-icon {
+            font-size: 40px;
+            animation: bounce 2s infinite;
+        }
+
+        .install-text h3 {
+            margin: 0 0 5px 0;
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .install-text p {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .install-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .install-btn, .dismiss-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        .install-btn {
+            background: white;
+            color: #1a7f8b;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .install-btn:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .dismiss-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .dismiss-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* مؤشر حالة الاتصال */
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 999;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .connection-status.online {
+            background: rgba(32, 178, 170, 0.9);
+        }
+
+        .connection-status.offline {
+            background: rgba(244, 67, 54, 0.9);
+        }
+
+        /* الرسوم المتحركة */
+        @keyframes slideUp {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+
+        /* تحسينات للأزرار */
+        .nav-button {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .nav-button:hover::before {
+            left: 100%;
+        }
+
+        /* استجابة للشاشات الصغيرة */
+        @media (max-width: 768px) {
+            .install-content {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
+
+            .install-buttons {
+                width: 100%;
+            }
+
+            .install-btn, .dismiss-btn {
+                flex: 1;
+            }
+        }
+    </style>
+
+    <script>
+        // متغيرات PWA
+        let deferredPrompt;
+        let installPrompt = document.getElementById('installPrompt');
+        let connectionStatus = document.getElementById('connectionStatus');
+
+        // ==========================================
+        // وظائف PWA
+        // ==========================================
+
+        // تسجيل Service Worker
+        async function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.register('sw.js');
+                    console.log('✅ تم تسجيل Service Worker:', registration.scope);
+
+                    // التحقق من وجود تحديث
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showUpdateNotification();
+                            }
+                        });
+                    });
+
+                } catch (error) {
+                    console.error('❌ فشل في تسجيل Service Worker:', error);
+                }
+            } else {
+                console.warn('⚠️ Service Worker غير مدعوم في هذا المتصفح');
+            }
+        }
+
+        // إظهار إشعار التحديث
+        function showUpdateNotification() {
+            if (confirm('📦 يوجد تحديث جديد للتطبيق. هل تريد تحديثه الآن؟')) {
+                window.location.reload();
+            }
+        }
+
+        // مراقبة حالة الاتصال
+        function updateConnectionStatus() {
+            const isOnline = navigator.onLine;
+            const statusIcon = document.getElementById('statusIcon');
+            const statusText = document.getElementById('statusText');
+
+            if (isOnline) {
+                connectionStatus.className = 'connection-status online';
+                statusIcon.textContent = '📶';
+                statusText.textContent = 'متصل';
+            } else {
+                connectionStatus.className = 'connection-status offline';
+                statusIcon.textContent = '🚫';
+                statusText.textContent = 'غير متصل';
+            }
+        }
+
+        // إعداد إشعار التثبيت
+        function setupInstallPrompt() {
+            // الاستماع لحدث beforeinstallprompt
+            window.addEventListener('beforeinstallprompt', (e) => {
+                console.log('🎯 تم اكتشاف حدث التثبيت');
+                e.preventDefault();
+                deferredPrompt = e;
+
+                // إظهار إشعار التثبيت بعد 3 ثوانٍ
+                setTimeout(() => {
+                    if (!localStorage.getItem('pwaInstallDismissed')) {
+                        showInstallPrompt();
+                    }
+                }, 3000);
+            });
+
+            // الاستماع لحدث appinstalled
+            window.addEventListener('appinstalled', (e) => {
+                console.log('✅ تم تثبيت التطبيق بنجاح!');
+                hideInstallPrompt();
+                deferredPrompt = null;
+
+                // إظهار رسالة نجاح
+                showToast('🎉 تم تثبيت التطبيق بنجاح!', 'success');
+            });
+
+            // إعداد أزرار إشعار التثبيت
+            document.getElementById('installBtn').addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    console.log(`🎯 نتيجة التثبيت: ${outcome}`);
+                    deferredPrompt = null;
+                }
+                hideInstallPrompt();
+            });
+
+            document.getElementById('dismissBtn').addEventListener('click', () => {
+                hideInstallPrompt();
+                localStorage.setItem('pwaInstallDismissed', 'true');
+            });
+        }
+
+        // إظهار إشعار التثبيت
+        function showInstallPrompt() {
+            installPrompt.style.display = 'block';
+        }
+
+        // إخفاء إشعار التثبيت
+        function hideInstallPrompt() {
+            installPrompt.style.display = 'none';
+        }
+
+        // إظهار رسائل تنبيه مؤقتة
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: ${type === 'success' ? '#4CAF50' : '#2196F3'};
+                color: white;
+                padding: 15px 25px;
+                border-radius: 8px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+                z-index: 1001;
+                font-family: 'Cairo', sans-serif;
+                font-weight: 600;
+                animation: slideDown 0.5s ease-out;
+            `;
+
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideUp 0.5s ease-in';
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
+        // ==========================================
+        // وظائف واجهة المستخدم
+        // ==========================================
+
+        // تأثير بصري عند النقر على الأزرار
+        document.querySelectorAll('.nav-button').forEach(button => {
+            button.addEventListener('click', function(e) {
+                // إنشاء تأثير الموجة
+                const ripple = document.createElement('div');
+                ripple.style.cssText = `
+                    position: absolute;
+                    width: 20px;
+                    height: 20px;
+                    background: rgba(255, 255, 255, 0.6);
+                    border-radius: 50%;
+                    pointer-events: none;
+                    transform: translate(-50%, -50%);
+                    animation: rippleEffect 0.6s ease-out;
+                    left: ${e.offsetX}px;
+                    top: ${e.offsetY}px;
+                `;
+
+                this.appendChild(ripple);
+
+                setTimeout(() => ripple.remove(), 600);
+            });
+        });
+
+        // ==========================================
+        // تهيئة التطبيق
+        // ==========================================
+
+        // تحميل الصفحة
+        window.addEventListener('load', function() {
+            console.log('%c🎉 مرحباً بك في نظام إدارة مخزون الكافيه! 🎉',
+                'color: #20B2AA; font-size: 18px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);');
+            console.log('%c📊 النظام جاهز للاستخدام', 'color: #024069; font-size: 14px; font-weight: bold;');
+
+            // تهيئة PWA
+            registerServiceWorker();
+            setupInstallPrompt();
+            updateConnectionStatus();
+
+            // التحقق من وجود تحديث كل 5 دقائق
+            setInterval(() => {
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'CHECK_FOR_UPDATES' });
+                }
+            }, 5 * 60 * 1000);
+        });
+
+        // مراقبة تغييرات حالة الاتصال
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+
+        // إضافة CSS للرسوم المتحركة
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes rippleEffect {
+                0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+                100% { transform: translate(-50%, -50%) scale(20); opacity: 0; }
+            }
+
+            @keyframes slideDown {
+                from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+                to { transform: translateX(-50%) translateY(0); opacity: 1; }
+            }
+
+            @keyframes slideUp {
+                from { transform: translateX(-50%) translateY(0); opacity: 1; }
+                to { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
 </body>
 </html>

@@ -129,6 +129,20 @@
         window.addEventListener('DOMContentLoaded', async function() {
             if (!localStorage.getItem('googleAppsScriptUrl')) {
                 try {
+                    const res = await fetch('config.json');
+                    const config = await res.json();
+                    if (config.googleAppsScriptUrl) {
+                        localStorage.setItem('googleAppsScriptUrl', config.googleAppsScriptUrl);
+                    }
+                } catch (e) {
+                    console.error('فشل في جلب إعدادات Google Apps Script من config.json:', e);
+                }
+            }
+        });
+        // جلب رابط Google Apps Script من config.json وتخزينه في localStorage إذا لم يكن موجوداً
+        window.addEventListener('DOMContentLoaded', async function() {
+            if (!localStorage.getItem('googleAppsScriptUrl')) {
+                try {
                     const res = await fetch('/config.json');
                     const config = await res.json();
                     if (config.googleAppsScriptUrl) {
@@ -168,14 +182,11 @@
         async function loadProjects() {
             const projectSelect = document.getElementById('projectName');
             try {
-                // تحقق من صحة رابط Google Apps Script عبر السيرفر
-                const checkRes = await fetch('/api/check-script-url');
-                const checkData = await checkRes.json();
-                if (!checkData.success || !checkData.url) {
+                const GOOGLE_SCRIPT_URL = localStorage.getItem('googleAppsScriptUrl');
+                if (!GOOGLE_SCRIPT_URL) {
                     showErrorModal();
                     return;
                 }
-                const GOOGLE_SCRIPT_URL = checkData.url;
                 showLoadingBar();
                 projectSelect.innerHTML = '<option value="">جاري التحميل...</option>';
                 const response = await fetch(GOOGLE_SCRIPT_URL + '?type=projects');
@@ -188,7 +199,6 @@
                         option.textContent = project;
                         projectSelect.appendChild(option);
                     });
-                    // تم تحميل المشاريع بنجاح (تم إلغاء طباعة الرسالة)
                 } else {
                     throw new Error(result.error || 'فشل في تحميل بيانات المشاريع');
                 }

@@ -1,2 +1,0 @@
-//لتشغيل node.js
-node Cafe_stoke/server.js

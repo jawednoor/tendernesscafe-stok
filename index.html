@@ -230,37 +230,52 @@
         // جلب أكواد الموظفين عند تحميل الصفحة
         async function loadEmployeeCodes() {
             try {
-                console.log('🔍 جاري جلب أكواد الموظفين من:', '/api/proxy-users');
-                const res = await fetch('/api/proxy-users');
+                // الحصول على رابط Google Apps Script من localStorage أو config.json
+                let GOOGLE_SCRIPT_URL = localStorage.getItem('googleAppsScriptUrl');
+                
+                if (!GOOGLE_SCRIPT_URL) {
+                    // محاولة جلبه من config.json
+                    try {
+                        const configRes = await fetch('config.json');
+                        const config = await configRes.json();
+                        GOOGLE_SCRIPT_URL = config.googleAppsScriptUrl;
+                        if (GOOGLE_SCRIPT_URL) {
+                            localStorage.setItem('googleAppsScriptUrl', GOOGLE_SCRIPT_URL);
+                        }
+                    } catch (configError) {
+                        console.error('❌ فشل في جلب config.json:', configError);
+                    }
+                }
+                
+                if (!GOOGLE_SCRIPT_URL) {
+                    throw new Error('Google Apps Script URL غير موجود');
+                }
+                
+                console.log('🔍 جاري جلب أكواد الموظفين من Google Apps Script');
+                const url = GOOGLE_SCRIPT_URL + '?type=users';
+                const res = await fetch(url);
                 console.log('📡 حالة الاستجابة:', res.status, res.statusText);
                 
                 if (!res.ok) {
                     throw new Error(`HTTP error! status: ${res.status}`);
                 }
                 
-                const contentType = res.headers.get('content-type');
-                console.log('📄 نوع المحتوى:', contentType);
-                
-                const responseText = await res.text();
-                console.log('📥 الرد الخام من السيرفر:', responseText);
-                
-                const data = JSON.parse(responseText);
-                console.log('✅ البيانات بعد التحويل:', data);
+                const data = await res.json();
+                console.log('✅ البيانات من Google Sheets:', data);
                 
                 if (data.success && Array.isArray(data.data)) {
                     employeeCodes = data.data.map(code => code.toString().trim());
                     console.log('✅ تم تحميل أكواد الموظفين بنجاح:', employeeCodes);
                 } else {
                     console.warn('⚠️ لم يتم العثور على أكواد، سيتم استخدام الكود الافتراضي');
-                    employeeCodes = ['1234']; // كود افتراضي للاختبار
+                    employeeCodes = ['5419', '1234']; // أكواد افتراضية للاختبار
                 }
             } catch (error) {
                 console.error('❌ خطأ في تحميل أكواد الموظفين:', error);
                 console.error('❌ تفاصيل الخطأ:', error.message);
-                console.error('❌ نوع الخطأ:', error.name);
-                // استخدام كود افتراضي في حالة الفشل
-                employeeCodes = ['1234'];
-                console.log('📌 سيتم استخدام الكود الافتراضي: 1234');
+                // استخدام أكواد افتراضية في حالة الفشل
+                employeeCodes = ['5419', '1234'];
+                console.log('📌 سيتم استخدام الأكواد الافتراضية:', employeeCodes);
             }
         }
 
@@ -272,7 +287,28 @@
         // جلب معلومات الموظف بناءً على الكود
         async function getUserInfo(code) {
             try {
-                const res = await fetch(`/api/proxy-user-info?code=${encodeURIComponent(code)}`);
+                let GOOGLE_SCRIPT_URL = localStorage.getItem('googleAppsScriptUrl');
+                
+                if (!GOOGLE_SCRIPT_URL) {
+                    // محاولة جلبه من config.json
+                    try {
+                        const configRes = await fetch('config.json');
+                        const config = await configRes.json();
+                        GOOGLE_SCRIPT_URL = config.googleAppsScriptUrl;
+                        if (GOOGLE_SCRIPT_URL) {
+                            localStorage.setItem('googleAppsScriptUrl', GOOGLE_SCRIPT_URL);
+                        }
+                    } catch (configError) {
+                        console.error('❌ فشل في جلب config.json:', configError);
+                    }
+                }
+                
+                if (!GOOGLE_SCRIPT_URL) {
+                    throw new Error('Google Apps Script URL غير موجود');
+                }
+                
+                const url = GOOGLE_SCRIPT_URL + `?type=userInfo&code=${encodeURIComponent(code)}`;
+                const res = await fetch(url);
                 const data = await res.json();
                 if (data.success && data.data) {
                     return data.data;

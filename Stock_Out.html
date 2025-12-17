@@ -35,19 +35,6 @@
 
             <div class="form-group">
                 <label for="product">المنتج:</label>
-                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                    <div class="barcode-input-container">
-                        <input type="text" id="barcodeInput" placeholder="امسح أو أدخل الباركود">
-                        <button type="button" onclick="startBarcodeScanner()" class="camera-btn">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 15.2c-2.1 0-3.8-1.7-3.8-3.8s1.7-3.8 3.8-3.8 3.8 1.7 3.8 3.8-1.7 3.8-3.8 3.8zm0-6.6c-1.5 0-2.8 1.3-2.8 2.8s1.3 2.8 2.8 2.8 2.8-1.3 2.8-2.8-1.3-2.8-2.8-2.8z"/>
-                                <path d="M20 19H4c-1.1 0-2-.9-2-2V7c0-1.1.9-2 2-2h3.2l1.8-2h6l1.8 2H20c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2zM4 6c-.6 0-1 .4-1 1v10c0 .6.4 1 1 1h16c.6 0 1-.4 1-1V7c0-.6-.4-1-1-1h-3.8l-1.8-2h-5l-1.8 2H4z"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <button type="button" onclick="searchByBarcodeOrName()" style="flex: 0.5; background: linear-gradient(135deg, #024069, #2980b9); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; min-width: 80px; padding: 12px 8px;">بحث</button>
-                </div>
-                
                 <!-- Custom Select with Search -->
                 <div class="custom-select-wrapper" style="position: relative;">
                     <div class="custom-select-trigger" onclick="toggleProductDropdown()" style="width: 100%; padding: 12px; border: 2px solid #20B2AA; border-radius: 8px; background: white; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 16px; display: flex; justify-content: space-between; align-items: center;">
@@ -177,8 +164,6 @@
 
         // متغيرات عامة
         let productsData = [];
-        let scannerActive = false;
-        let flashEnabled = false;
         let addedProducts = []; // قائمة المنتجات المضافة
 
         // تحميل المشاريع من Google Sheets
@@ -773,21 +758,12 @@ window.addEventListener('DOMContentLoaded', function() {
             document.getElementById('product').value = '';
             document.getElementById('quantity').value = '';
             document.getElementById('unit').value = '';
-            document.getElementById('barcodeInput').value = '';
             document.getElementById('date').value = new Date().toISOString().split('T')[0];
             
             // مسح قائمة المنتجات المضافة أيضاً
             addedProducts = [];
             updateProductsList();
         }
-
-        // إضافة دعم Enter للبحث بالباركود
-        document.getElementById('barcodeInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                searchByBarcode();
-            }
-        });
 
         // إضافة دعم Enter في حقل الكمية لإضافة المنتج
         document.getElementById('quantity').addEventListener('keypress', function(e) {
@@ -797,168 +773,7 @@ window.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // وظائف ماسح الباركود
-        let barcodeDetectionCount = {};
-        let minDetections = 2; // قراءتين للتأكد من الدقة
-        let lastDetectedBarcode = null;
-        let detectionTimeout = null;
-        
-        // دالة التحقق من صحة باركود EAN-13
-        function isValidEAN13(barcode) {
-            if (!barcode || barcode.length !== 13) return false;
-            
-            // التحقق من أن جميع الأحرف أرقام
-            if (!/^\d+$/.test(barcode)) return false;
-            
-            // حساب checksum
-            let sum = 0;
-            for (let i = 0; i < 12; i++) {
-                let digit = parseInt(barcode[i]);
-                sum += (i % 2 === 0) ? digit : digit * 3;
-            }
-            let checksum = (10 - (sum % 10)) % 10;
-            
-            return checksum === parseInt(barcode[12]);
-        }
-        
-        function startBarcodeScanner() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                showMessage('error', 'الكاميرا غير متوفرة في هذا المتصفح');
-                return;
-            }
 
-            const scannerElement = document.getElementById('barcodeScanner');
-            scannerElement.style.display = 'flex';
-            scannerActive = true;
-            barcodeDetectionCount = {};
-            lastDetectedBarcode = null;
-
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector('#scannerVideo'),
-                    constraints: {
-                        width: { min: 640, ideal: 1280, max: 1920 },
-                        height: { min: 480, ideal: 720, max: 1080 },
-                        facingMode: "environment",
-                        aspectRatio: { ideal: 16/9 }
-                    },
-                    area: {
-                        top: "20%",
-                        right: "10%",
-                        left: "10%",
-                        bottom: "20%"
-                    }
-                },
-                frequency: 20,
-                locator: {
-                    patchSize: "medium",
-                    halfSample: true
-                },
-                numOfWorkers: 2,
-                decoder: {
-                    readers: [
-                        "ean_reader",
-                        "ean_8_reader",
-                        "code_128_reader",
-                        "code_39_reader",
-                        "code_39_vin_reader",
-                        "codabar_reader",
-                        "upc_reader",
-                        "upc_e_reader",
-                        "i2of5_reader",
-                        "2of5_reader",
-                        "code_93_reader"
-                    ],
-                    debug: {
-                        drawBoundingBox: true,
-                        showFrequency: false,
-                        drawScanline: true,
-                        showPattern: false
-                    }
-                },
-                locate: true
-            }, function(err) {
-                if (err) {
-                    console.error('خطأ في تشغيل الكاميرا:', err);
-                    showMessage('error', 'لم يتم العثور على كاميرا أو رفض الوصول');
-                    stopBarcodeScanner();
-                    return;
-                }
-                Quagga.start();
-                showMessage('success', 'تم تشغيل الكاميرا - وجه نحو الباركود');
-            });
-
-            // معالج قراءة الباركود محسّن
-            Quagga.onDetected(function(data) {
-                const barcode = data.codeResult.code;
-                const format = data.codeResult.format;
-                
-                // تجاهل الباركودات القصيرة جداً
-                if (!barcode || barcode.length < 8) {
-                    return;
-                }
-                
-                // التحقق من صحة EAN-13
-                if (format === 'ean_13' || barcode.length === 13) {
-                    if (!isValidEAN13(barcode)) {
-                        console.warn('باركود EAN-13 غير صحيح:', barcode);
-                        return;
-                    }
-                }
-                
-                // عد مرات اكتشاف نفس الباركود
-                if (!barcodeDetectionCount[barcode]) {
-                    barcodeDetectionCount[barcode] = 0;
-                }
-                barcodeDetectionCount[barcode]++;
-                
-                console.log(`قراءة ${barcodeDetectionCount[barcode]}/${minDetections}: ${barcode}`);
-                
-                // إذا تم قراءة الباركود عدة مرات متتالية، نقبله
-                if (barcodeDetectionCount[barcode] >= minDetections) {
-                    lastDetectedBarcode = barcode;
-                    document.getElementById('barcodeInput').value = barcode;
-                    
-                    // إيقاف الماسح
-                    stopBarcodeScanner();
-                    
-                    // البحث التلقائي
-                    setTimeout(() => {
-                        searchByBarcodeOrName();
-                    }, 300);
-                    
-                    showMessage('success', `✓ تم مسح الباركود: ${barcode}`);
-                }
-            });
-        }
-
-        function stopBarcodeScanner() {
-            if (scannerActive) {
-                Quagga.stop();
-                scannerActive = false;
-            }
-            document.getElementById('barcodeScanner').style.display = 'none';
-        }
-
-        function toggleFlash() {
-            if (!scannerActive) return;
-            
-            const track = Quagga.CameraAccess.getActiveTrack();
-            if (track && 'torch' in track.getCapabilities()) {
-                flashEnabled = !flashEnabled;
-                track.applyConstraints({
-                    advanced: [{ torch: flashEnabled }]
-                }).then(() => {
-                    showMessage('success', flashEnabled ? '💡 تم تشغيل الفلاش' : '💡 تم إطفاء الفلاش');
-                }).catch(() => {
-                    showMessage('error', '❌ الفلاش غير متوفر');
-                });
-            } else {
-                showMessage('error', '❌ الفلاش غير مدعوم في هذا الجهاز');
-            }
-        }
 
         // دالة اختبار الاتصال مع Google Apps Script
         async function testConnection() {
@@ -999,13 +814,6 @@ window.addEventListener('DOMContentLoaded', function() {
 
         // إضافة دالة لاختبار الاتصال عند الحاجة
         window.testConnection = testConnection;
-
-        // إغلاق الماسح عند الضغط على Escape
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && scannerActive) {
-                stopBarcodeScanner();
-            }
-        });
 
         // البحث عن المنتجات باستخدام كلمة مفتاحية
         function searchByKeyword() {

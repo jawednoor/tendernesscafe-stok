@@ -206,7 +206,7 @@
             </div>
 
             <button type="submit" class="btn-login">
-                🔓 دخول
+                دخول
             </button>
 
             <div class="loading">
@@ -215,7 +215,7 @@
             </div>
 
             <div class="error-message" id="errorMessage">
-                ❌ الكود غير صحيح أو غير مسموح
+                 الكود غير صحيح أو غير مسموح
             </div>
         </form>
     </div>
@@ -255,10 +255,10 @@
                     }
                     
                     localStorage.setItem('googleAppsScriptUrl', GOOGLE_SCRIPT_URL);
-                    console.log('✅ تم حفظ رابط Google Apps Script');
+                    console.log(' تم حفظ رابط Google Apps Script');
                 }
                 
-                console.log('🔗 الاتصال بـ Google Apps Script...');
+                console.log(' الاتصال بـ Google Apps Script...');
                 const url = GOOGLE_SCRIPT_URL + '?type=users';
                 
                 // إضافة timeout للاتصال
@@ -291,11 +291,11 @@
                 }
                 
             } catch (error) {
-                console.error('❌ خطأ في تحميل أكواد الموظفين:', error);
+                console.error(' خطأ في تحميل أكواد الموظفين:', error);
                 isCodesLoaded = false;
                 
                 // عرض رسالة خطأ للمستخدم
-                errorMessage.textContent = '⚠️ فشل الاتصال بالنظام. يرجى المحاولة لاحقاً';
+                errorMessage.textContent = ' فشل الاتصال بالنظام. يرجى المحاولة لاحقاً';
                 errorMessage.classList.add('show');
                 
                 // إخفاء الرسالة بعد 5 ثوان
@@ -356,23 +356,23 @@
             
             // التحقق من أن الأكواد تم تحميلها
             if (!isCodesLoaded || employeeCodes.length === 0) {
-                errorMessage.textContent = '⚠️ جاري الاتصال بالنظام، يرجى الانتظار...';
+                errorMessage.textContent = 'جاري الاتصال بالنظام، يرجى الانتظار...';
                 errorMessage.classList.add('show');
                 
                 // محاولة إعادة التحميل
                 await loadEmployeeCodes();
                 
                 if (!isCodesLoaded) {
-                    errorMessage.textContent = '❌ فشل الاتصال بالنظام. يرجى التحقق من الإنترنت';
+                    errorMessage.textContent = 'فشل الاتصال بالنظام. يرجى التحقق من الإنترنت';
                     return;
                 }
                 
                 errorMessage.classList.remove('show');
             }
             
-            console.log('🔐 محاولة تسجيل الدخول بالكود:', code);
-            console.log('📋 الأكواد المتاحة:', employeeCodes);
-            console.log('📊 عدد الأكواد:', employeeCodes.length);
+            console.log(' محاولة تسجيل الدخول بالكود:', code);
+            console.log(' الأكواد المتاحة:', employeeCodes);
+            console.log(' عدد الأكواد:', employeeCodes.length);
             
             // إخفاء رسالة الخطأ
             errorMessage.classList.remove('show');
@@ -400,7 +400,7 @@
                 } else {
                     console.error('❌ فشل في جلب معلومات الموظف');
                     // فشل في جلب معلومات الموظف
-                    errorMessage.textContent = '❌ خطأ في جلب معلومات الموظف';
+                    errorMessage.textContent = 'خطأ في جلب معلومات الموظف';
                     errorMessage.classList.add('show');
                     employeeCodeInput.value = '';
                     employeeCodeInput.focus();
@@ -408,7 +408,7 @@
             } else {
                 // الكود خاطئ
                 loadingElement.classList.remove('show');
-                errorMessage.textContent = '❌ الكود غير صحيح أو غير مسموح';
+                errorMessage.textContent = 'الكود غير صحيح أو غير مسموح';
                 errorMessage.classList.add('show');
                 employeeCodeInput.value = '';
                 employeeCodeInput.focus();

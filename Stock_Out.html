@@ -799,9 +799,27 @@ window.addEventListener('DOMContentLoaded', function() {
 
         // وظائف ماسح الباركود
         let barcodeDetectionCount = {};
-        let minDetections = 1; // قراءة واحدة فقط للسرعة
+        let minDetections = 2; // قراءتين للتأكد من الدقة
         let lastDetectedBarcode = null;
         let detectionTimeout = null;
+        
+        // دالة التحقق من صحة باركود EAN-13
+        function isValidEAN13(barcode) {
+            if (!barcode || barcode.length !== 13) return false;
+            
+            // التحقق من أن جميع الأحرف أرقام
+            if (!/^\d+$/.test(barcode)) return false;
+            
+            // حساب checksum
+            let sum = 0;
+            for (let i = 0; i < 12; i++) {
+                let digit = parseInt(barcode[i]);
+                sum += (i % 2 === 0) ? digit : digit * 3;
+            }
+            let checksum = (10 - (sum % 10)) % 10;
+            
+            return checksum === parseInt(barcode[12]);
+        }
         
         function startBarcodeScanner() {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -875,31 +893,44 @@ window.addEventListener('DOMContentLoaded', function() {
             // معالج قراءة الباركود محسّن
             Quagga.onDetected(function(data) {
                 const barcode = data.codeResult.code;
+                const format = data.codeResult.format;
                 
                 // تجاهل الباركودات القصيرة جداً
-                if (!barcode || barcode.length < 6) {
+                if (!barcode || barcode.length < 8) {
                     return;
                 }
                 
-                // تجنب التكرار
-                if (barcode === lastDetectedBarcode) {
-                    return;
+                // التحقق من صحة EAN-13
+                if (format === 'ean_13' || barcode.length === 13) {
+                    if (!isValidEAN13(barcode)) {
+                        console.warn('باركود EAN-13 غير صحيح:', barcode);
+                        return;
+                    }
                 }
                 
-                console.log('تم اكتشاف باركود:', barcode);
+                // عد مرات اكتشاف نفس الباركود
+                if (!barcodeDetectionCount[barcode]) {
+                    barcodeDetectionCount[barcode] = 0;
+                }
+                barcodeDetectionCount[barcode]++;
                 
-                lastDetectedBarcode = barcode;
-                document.getElementById('barcodeInput').value = barcode;
+                console.log(`قراءة ${barcodeDetectionCount[barcode]}/${minDetections}: ${barcode}`);
                 
-                // إيقاف الماسح مباشرة
-                stopBarcodeScanner();
-                
-                // البحث التلقائي
-                setTimeout(() => {
-                    searchByBarcodeOrName();
-                }, 300);
-                
-                showMessage('success', `تم مسح الباركود: ${barcode}`);
+                // إذا تم قراءة الباركود عدة مرات متتالية، نقبله
+                if (barcodeDetectionCount[barcode] >= minDetections) {
+                    lastDetectedBarcode = barcode;
+                    document.getElementById('barcodeInput').value = barcode;
+                    
+                    // إيقاف الماسح
+                    stopBarcodeScanner();
+                    
+                    // البحث التلقائي
+                    setTimeout(() => {
+                        searchByBarcodeOrName();
+                    }, 300);
+                    
+                    showMessage('success', `✓ تم مسح الباركود: ${barcode}`);
+                }
             });
         }
 

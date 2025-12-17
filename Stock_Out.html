@@ -47,10 +47,9 @@
                     </div>
                     <button type="button" onclick="searchByBarcodeOrName()" style="flex: 0.5; background: linear-gradient(135deg, #024069, #2980b9); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; min-width: 80px; padding: 12px 8px;">بحث</button>
                 </div>
-                <input type="text" id="productSearchInput" placeholder="🔍 ابحث عن منتج بالاسم..." style="width: 100%; padding: 10px; border: 2px solid #20B2AA; border-radius: 8px; margin-bottom: 10px; font-family: 'Cairo', sans-serif; font-size: 16px;">
-                <select id="product" name="product" required>
-                    <option value="">جاري التحميل...</option>
-                </select>
+                <input type="text" id="product" name="product" list="productsList" placeholder="🔍 ابحث واختر المنتج..." required style="width: 100%; padding: 12px; border: 2px solid #20B2AA; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 16px;">
+                <datalist id="productsList">
+                </datalist>
             </div>
 
             <div class="form-group">
@@ -232,14 +231,14 @@
                 const result = await response.json();
                 if (result.success && result.data) {
                     productsData = result.data;
-                    productSelect.innerHTML = '<option value="">اختر المنتج</option>';
+                    const productsList = document.getElementById('productsList');
+                    productsList.innerHTML = '';
                     result.data.forEach(product => {
                         const option = document.createElement('option');
                         option.value = product.name;
-                        option.textContent = product.name;
-                        option.dataset.barcode = product.barcode;
-                        option.dataset.unit = product.unit || 'قطعة';
-                        productSelect.appendChild(option);
+                        option.setAttribute('data-barcode', product.barcode || '');
+                        option.setAttribute('data-unit', product.unit || 'قطعة');
+                        productsList.appendChild(option);
                     });
                     console.log(`تم تحميل ${result.count} منتج بنجاح`);
                 } else {
@@ -275,7 +274,8 @@
                 const localProduct = productsData.find(p => p.barcode === barcode);
                 if (localProduct) {
                     // تحديد المنتج في القائمة
-                    productSelect.value = localProduct.name;
+                    const productInput = document.getElementById('product');
+                    productInput.value = localProduct.name;
                     // تحديث الوحدة
                     document.getElementById('unit').value = localProduct.unit || 'قطعة';
                     showMessage('success', `تم العثور على المنتج: ${localProduct.name}`);
@@ -440,84 +440,8 @@ window.addEventListener('DOMContentLoaded', function() {
             }, 4000);
         }
 
-        // بحث حي في قائمة المنتجات
-        const productSearchInput = document.getElementById('productSearchInput');
-        if (productSearchInput) {
-            productSearchInput.addEventListener('input', function() {
-                const searchText = this.value.trim().toLowerCase();
-                const productSelect = document.getElementById('product');
-                
-                if (!searchText) {
-                    // إذا كان الحقل فارغ، أظهر كل المنتجات
-                    productSelect.innerHTML = '<option value="">اختر المنتج</option>';
-                    productsData.forEach(product => {
-                        const option = document.createElement('option');
-                        option.value = product.name;
-                        option.textContent = product.name;
-                        option.dataset.barcode = product.barcode || '';
-                        option.dataset.unit = product.unit || 'قطعة';
-                        productSelect.appendChild(option);
-                    });
-                    return;
-                }
-                
-                // تصفية المنتجات بناءً على النص المدخل
-                const filteredProducts = productsData.filter(product => 
-                    product.name.toLowerCase().includes(searchText)
-                );
-                
-                // تحديث القائمة
-                productSelect.innerHTML = '<option value="">اختر من النتائج (' + filteredProducts.length + ')</option>';
-                filteredProducts.forEach(product => {
-                    const option = document.createElement('option');
-                    option.value = product.name;
-                    option.textContent = product.name;
-                    option.dataset.barcode = product.barcode || '';
-                    option.dataset.unit = product.unit || 'قطعة';
-                    productSelect.appendChild(option);
-                });
-                
-                // إذا كانت هناك نتيجة واحدة، حددها تلقائياً
-                if (filteredProducts.length === 1) {
-                    productSelect.value = filteredProducts[0].name;
-                    productSelect.dispatchEvent(new Event('change'));
-                }
-            });
-        }
-
         // تحديث القائمة المنسدلة عند تغيير قيمة barcodeInput
-const barcodeInput = document.getElementById('barcodeInput');
-barcodeInput.addEventListener('input', function() {
-    const input = barcodeInput.value.trim().toLowerCase();
-    const productSelect = document.getElementById('product');
-    if (!input) {
-        // إذا كان الحقل فارغ، أظهر كل المنتجات
-        productSelect.innerHTML = '<option value="">اختر المنتج</option>';
-        productsData.forEach(product => {
-            const option = document.createElement('option');
-            option.value = product.name;
-            option.textContent = product.name;
-            option.dataset.barcode = product.barcode;
-            option.dataset.unit = product.unit || 'قطعة';
-            productSelect.appendChild(option);
-        });
-        return;
-    }
-    // تصفية المنتجات بناءً على الباركود أو الاسم
-    const filteredProducts = productsData.filter(product => 
-        product.name.toLowerCase().includes(input) || 
-        product.barcode.includes(input)
-    );
-    productSelect.innerHTML = '<option value="">اختر المنتج</option>';
-    filteredProducts.forEach(product => {
-        const option = document.createElement('option');
-        option.value = product.name;
-        option.textContent = product.name;
-        option.dataset.barcode = product.barcode;
-        option.dataset.unit = product.unit || 'قطعة';
-        productSelect.appendChild(option);
-    });
-});
+
 
         // تحميل البيانات عند تحميل الصفحة
         window.addEventListener('load', function() {
@@ -526,10 +450,12 @@ barcodeInput.addEventListener('input', function() {
         });
 
         // تحديث الوحدة عند اختيار منتج من القائمة
-        document.getElementById('product').addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            const unit = selectedOption.dataset.unit || 'قطعة';
-            document.getElementById('unit').value = unit;
+        document.getElementById('product').addEventListener('input', function() {
+            const selectedProduct = this.value;
+            const product = productsData.find(p => p.name === selectedProduct);
+            if (product) {
+                document.getElementById('unit').value = product.unit || 'قطعة';
+            }
         });
 
         // معالج إرسال النموذج - تم إلغاؤه لصالح نظام الإضافة

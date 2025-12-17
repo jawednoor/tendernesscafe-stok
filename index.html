@@ -226,56 +226,85 @@
         const errorMessage = document.getElementById('errorMessage');
         const loadingElement = document.querySelector('.loading');
         let employeeCodes = [];
+        let isCodesLoaded = false;
+        let GOOGLE_SCRIPT_URL = '';
 
         // جلب أكواد الموظفين عند تحميل الصفحة
         async function loadEmployeeCodes() {
+            // إظهار التحميل
+            loadingElement.classList.add('show');
+            loadingElement.querySelector('.loading').textContent = 'جاري الاتصال بالنظام...';
+            
             try {
                 // الحصول على رابط Google Apps Script من localStorage أو config.json
-                let GOOGLE_SCRIPT_URL = localStorage.getItem('googleAppsScriptUrl');
+                GOOGLE_SCRIPT_URL = localStorage.getItem('googleAppsScriptUrl');
                 
                 if (!GOOGLE_SCRIPT_URL) {
-                    // محاولة جلبه من config.json
-                    try {
-                        const configRes = await fetch('config.json');
-                        const config = await configRes.json();
-                        GOOGLE_SCRIPT_URL = config.googleAppsScriptUrl;
-                        if (GOOGLE_SCRIPT_URL) {
-                            localStorage.setItem('googleAppsScriptUrl', GOOGLE_SCRIPT_URL);
-                        }
-                    } catch (configError) {
-                        console.error('❌ فشل في جلب config.json:', configError);
+                    console.log('🔍 جاري جلب الإعدادات من config.json...');
+                    const configRes = await fetch('config.json');
+                    
+                    if (!configRes.ok) {
+                        throw new Error('فشل في تحميل ملف الإعدادات');
                     }
+                    
+                    const config = await configRes.json();
+                    GOOGLE_SCRIPT_URL = config.googleAppsScriptUrl;
+                    
+                    if (!GOOGLE_SCRIPT_URL) {
+                        throw new Error('رابط Google Apps Script غير موجود في الإعدادات');
+                    }
+                    
+                    localStorage.setItem('googleAppsScriptUrl', GOOGLE_SCRIPT_URL);
+                    console.log('✅ تم حفظ رابط Google Apps Script');
                 }
                 
-                if (!GOOGLE_SCRIPT_URL) {
-                    throw new Error('Google Apps Script URL غير موجود');
-                }
-                
-                console.log('🔍 جاري جلب أكواد الموظفين من Google Apps Script');
+                console.log('🔗 الاتصال بـ Google Apps Script...');
                 const url = GOOGLE_SCRIPT_URL + '?type=users';
-                const res = await fetch(url);
+                
+                // إضافة timeout للاتصال
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                
+                const res = await fetch(url, {
+                    method: 'GET',
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
                 console.log('📡 حالة الاستجابة:', res.status, res.statusText);
                 
                 if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
+                    throw new Error(`خطأ في الاتصال: ${res.status}`);
                 }
                 
                 const data = await res.json();
-                console.log('✅ البيانات من Google Sheets:', data);
+                console.log('📥 البيانات المستلمة:', data);
                 
-                if (data.success && Array.isArray(data.data)) {
+                if (data.success && Array.isArray(data.data) && data.data.length > 0) {
                     employeeCodes = data.data.map(code => code.toString().trim());
+                    isCodesLoaded = true;
                     console.log('✅ تم تحميل أكواد الموظفين بنجاح:', employeeCodes);
+                    console.log('📊 عدد الأكواد:', employeeCodes.length);
                 } else {
-                    console.warn('⚠️ لم يتم العثور على أكواد، سيتم استخدام الكود الافتراضي');
-                    employeeCodes = ['5419', '1234']; // أكواد افتراضية للاختبار
+                    throw new Error('لم يتم العثور على أكواد موظفين في Google Sheets');
                 }
+                
             } catch (error) {
                 console.error('❌ خطأ في تحميل أكواد الموظفين:', error);
-                console.error('❌ تفاصيل الخطأ:', error.message);
-                // استخدام أكواد افتراضية في حالة الفشل
-                employeeCodes = ['5419', '1234'];
-                console.log('📌 سيتم استخدام الأكواد الافتراضية:', employeeCodes);
+                isCodesLoaded = false;
+                
+                // عرض رسالة خطأ للمستخدم
+                errorMessage.textContent = '⚠️ فشل الاتصال بالنظام. يرجى المحاولة لاحقاً';
+                errorMessage.classList.add('show');
+                
+                // إخفاء الرسالة بعد 5 ثوان
+                setTimeout(() => {
+                    errorMessage.classList.remove('show');
+                }, 5000);
+            } finally {
+                // إخفاء التحميل
+                loadingElement.classList.remove('show');
             }
         }
 
@@ -324,8 +353,26 @@
             e.preventDefault();
             
             const code = employeeCodeInput.value.trim();
+            
+            // التحقق من أن الأكواد تم تحميلها
+            if (!isCodesLoaded || employeeCodes.length === 0) {
+                errorMessage.textContent = '⚠️ جاري الاتصال بالنظام، يرجى الانتظار...';
+                errorMessage.classList.add('show');
+                
+                // محاولة إعادة التحميل
+                await loadEmployeeCodes();
+                
+                if (!isCodesLoaded) {
+                    errorMessage.textContent = '❌ فشل الاتصال بالنظام. يرجى التحقق من الإنترنت';
+                    return;
+                }
+                
+                errorMessage.classList.remove('show');
+            }
+            
             console.log('🔐 محاولة تسجيل الدخول بالكود:', code);
             console.log('📋 الأكواد المتاحة:', employeeCodes);
+            console.log('📊 عدد الأكواد:', employeeCodes.length);
             
             // إخفاء رسالة الخطأ
             errorMessage.classList.remove('show');
@@ -333,7 +380,7 @@
             // إظهار التحميل
             loadingElement.classList.add('show');
             
-            // التحقق من الكود وجلب معلومات الموظف
+            // التحقق من الكود
             const isValid = checkEmployeeCode(code);
             console.log('✅ هل الكود صحيح؟', isValid);
             
@@ -368,8 +415,55 @@
             }
         });
 
+        // جلب معلومات الموظف بناءً على الكود
+        async function getUserInfo(code) {
+            try {
+                if (!GOOGLE_SCRIPT_URL) {
+                    throw new Error('Google Apps Script URL غير موجود');
+                }
+                
+                const url = GOOGLE_SCRIPT_URL + `?type=userInfo&code=${encodeURIComponent(code)}`;
+                
+                // إضافة timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
+                const res = await fetch(url, {
+                    method: 'GET',
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!res.ok) {
+                    throw new Error(`خطأ في الاتصال: ${res.status}`);
+                }
+                
+                const data = await res.json();
+                
+                if (data.success && data.data) {
+                    return data.data;
+                } else {
+                    console.warn('⚠️ لم يتم العثور على معلومات الموظف');
+                    return null;
+                }
+            } catch (error) {
+                console.error('❌ خطأ في جلب معلومات الموظف:', error);
+                return null;
+            }
+        }
+
         // تحميل الأكواد عند فتح الصفحة
-        window.addEventListener('DOMContentLoaded', loadEmployeeCodes);
+        window.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 بدء تحميل الصفحة...');
+            await loadEmployeeCodes();
+            
+            if (isCodesLoaded) {
+                console.log('✅ النظام جاهز - يمكن تسجيل الدخول الآن');
+            } else {
+                console.warn('⚠️ فشل تحميل الأكواد - يرجى المحاولة مرة أخرى');
+            }
+        });
 
         // التركيز على حقل الإدخال عند الضغط على Enter في أي مكان
         document.addEventListener('keydown', function(e) {

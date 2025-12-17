@@ -47,6 +47,7 @@
                     </div>
                     <button type="button" onclick="searchByBarcodeOrName()" style="flex: 0.5; background: linear-gradient(135deg, #024069, #2980b9); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; min-width: 80px; padding: 12px 8px;">بحث</button>
                 </div>
+                <input type="text" id="productSearchInput" placeholder="🔍 ابحث عن منتج بالاسم..." style="width: 100%; padding: 10px; border: 2px solid #20B2AA; border-radius: 8px; margin-bottom: 10px; font-family: 'Cairo', sans-serif; font-size: 16px;">
                 <select id="product" name="product" required>
                     <option value="">جاري التحميل...</option>
                 </select>
@@ -437,6 +438,51 @@ window.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
                 messageDiv.remove();
             }, 4000);
+        }
+
+        // بحث حي في قائمة المنتجات
+        const productSearchInput = document.getElementById('productSearchInput');
+        if (productSearchInput) {
+            productSearchInput.addEventListener('input', function() {
+                const searchText = this.value.trim().toLowerCase();
+                const productSelect = document.getElementById('product');
+                
+                if (!searchText) {
+                    // إذا كان الحقل فارغ، أظهر كل المنتجات
+                    productSelect.innerHTML = '<option value="">اختر المنتج</option>';
+                    productsData.forEach(product => {
+                        const option = document.createElement('option');
+                        option.value = product.name;
+                        option.textContent = product.name;
+                        option.dataset.barcode = product.barcode || '';
+                        option.dataset.unit = product.unit || 'قطعة';
+                        productSelect.appendChild(option);
+                    });
+                    return;
+                }
+                
+                // تصفية المنتجات بناءً على النص المدخل
+                const filteredProducts = productsData.filter(product => 
+                    product.name.toLowerCase().includes(searchText)
+                );
+                
+                // تحديث القائمة
+                productSelect.innerHTML = '<option value="">اختر من النتائج (' + filteredProducts.length + ')</option>';
+                filteredProducts.forEach(product => {
+                    const option = document.createElement('option');
+                    option.value = product.name;
+                    option.textContent = product.name;
+                    option.dataset.barcode = product.barcode || '';
+                    option.dataset.unit = product.unit || 'قطعة';
+                    productSelect.appendChild(option);
+                });
+                
+                // إذا كانت هناك نتيجة واحدة، حددها تلقائياً
+                if (filteredProducts.length === 1) {
+                    productSelect.value = filteredProducts[0].name;
+                    productSelect.dispatchEvent(new Event('change'));
+                }
+            });
         }
 
         // تحديث القائمة المنسدلة عند تغيير قيمة barcodeInput

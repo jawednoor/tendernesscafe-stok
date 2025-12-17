@@ -47,9 +47,22 @@
                     </div>
                     <button type="button" onclick="searchByBarcode()" style="flex: 0.5; background: linear-gradient(135deg, #024069, #2980b9); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; min-width: 80px; padding: 12px 8px;">بحث</button>
                 </div>
-                <input type="text" id="product" name="product" list="productsList" placeholder="🔍 ابحث واختر المنتج..." required style="width: 100%; padding: 12px; border: 2px solid #20B2AA; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 16px;">
-                <datalist id="productsList">
-                </datalist>
+                
+                <!-- Custom Select with Search -->
+                <div class="custom-select-wrapper" style="position: relative;">
+                    <div class="custom-select-trigger" onclick="toggleProductDropdown()" style="width: 100%; padding: 12px; border: 2px solid #20B2AA; border-radius: 8px; background: white; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 16px; display: flex; justify-content: space-between; align-items: center;">
+                        <span id="selectedProduct">اختر المنتج...</span>
+                        <span style="transform: rotate(0deg); transition: transform 0.3s;">▼</span>
+                    </div>
+                    <div id="productDropdown" class="custom-select-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid #20B2AA; border-top: none; border-radius: 0 0 8px 8px; max-height: 300px; overflow: hidden; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <div style="padding: 10px; border-bottom: 1px solid #e0e0e0; position: sticky; top: 0; background: #f8f9fa;">
+                            <input type="text" id="productSearchInput" placeholder="🔍 ابحث عن منتج..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-family: 'Cairo', sans-serif;" oninput="filterProducts()">
+                        </div>
+                        <div id="productOptions" style="max-height: 250px; overflow-y: auto;">
+                        </div>
+                    </div>
+                    <input type="hidden" id="product" name="product" required>
+                </div>
             </div>
 
             <div class="form-group">
@@ -217,15 +230,7 @@
                 const result = await response.json();
                 if (result.success && result.data) {
                     productsData = result.data;
-                    const productsList = document.getElementById('productsList');
-                    productsList.innerHTML = '';
-                    result.data.forEach(product => {
-                        const option = document.createElement('option');
-                        option.value = product.name;
-                        option.setAttribute('data-barcode', product.barcode || '');
-                        option.setAttribute('data-unit', product.unit || 'قطعة');
-                        productsList.appendChild(option);
-                    });
+                    renderProductOptions();
                     console.log(`تم تحميل ${result.count} منتج بنجاح${projectName ? ` للمشروع: ${projectName}` : ''}`);
                 } else {
                     throw new Error(result.error || 'فشل في تحميل بيانات المنتجات');
@@ -260,10 +265,7 @@
                 const localProduct = productsData.find(p => p.barcode === barcode);
                 if (localProduct) {
                     // تحديد المنتج في القائمة
-                    const productInput = document.getElementById('product');
-                    productInput.value = localProduct.name;
-                    // تحديث الوحدة
-                    document.getElementById('unit').value = localProduct.unit || 'قطعة';
+                    selectProduct(localProduct);
                     showMessage('success', `تم العثور على المنتج: ${localProduct.name}`);
                     return;
                 }
@@ -585,6 +587,7 @@
         // دالة مسح حقول المنتج والكمية فقط
         function clearProductFields() {
             document.getElementById('product').value = '';
+            document.getElementById('selectedProduct').textContent = 'اختر المنتج...';
             document.getElementById('quantity').value = '';
             document.getElementById('unit').value = '';
             document.getElementById('barcodeInput').value = '';
@@ -967,6 +970,71 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && scannerActive) {
                 stopBarcodeScanner();
+            }
+        });
+
+        // وظائف القائمة المخصصة مع البحث
+        function toggleProductDropdown() {
+            const dropdown = document.getElementById('productDropdown');
+            const isVisible = dropdown.style.display === 'block';
+            dropdown.style.display = isVisible ? 'none' : 'block';
+            
+            if (!isVisible) {
+                document.getElementById('productSearchInput').focus();
+                document.getElementById('productSearchInput').value = '';
+                filterProducts();
+            }
+        }
+
+        function renderProductOptions(filteredData = null) {
+            const optionsContainer = document.getElementById('productOptions');
+            const data = filteredData || productsData;
+            
+            optionsContainer.innerHTML = '';
+            
+            if (data.length === 0) {
+                optionsContainer.innerHTML = '<div style="padding: 15px; text-align: center; color: #999;">لا توجد نتائج</div>';
+                return;
+            }
+            
+            data.forEach(product => {
+                const option = document.createElement('div');
+                option.style.cssText = 'padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: background 0.2s;';
+                option.textContent = product.name;
+                option.onmouseover = function() { this.style.background = '#f8f9fa'; };
+                option.onmouseout = function() { this.style.background = 'white'; };
+                option.onclick = function() { selectProduct(product); };
+                optionsContainer.appendChild(option);
+            });
+        }
+
+        function filterProducts() {
+            const searchText = document.getElementById('productSearchInput').value.toLowerCase();
+            const filtered = productsData.filter(product => 
+                product.name.toLowerCase().includes(searchText)
+            );
+            renderProductOptions(filtered);
+        }
+
+        function selectProduct(product) {
+            document.getElementById('product').value = product.name;
+            document.getElementById('selectedProduct').textContent = product.name;
+            document.getElementById('productDropdown').style.display = 'none';
+            
+            // تحديث الوحدة
+            const projectName = document.getElementById('projectName').value;
+            if (projectName) {
+                updateUnitFromStockOut(projectName, product.name);
+            } else {
+                document.getElementById('unit').value = product.unit || 'قطعة';
+            }
+        }
+
+        // إغلاق القائمة عند النقر خارجها
+        document.addEventListener('click', function(e) {
+            const wrapper = document.querySelector('.custom-select-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                document.getElementById('productDropdown').style.display = 'none';
             }
         });
     </script>

@@ -17,6 +17,7 @@
         <div class="header">
             <img src="img/logo.png" alt="شعار الكافيه" class="logo">
             <h1>إدخال مخزون الكافيه</h1>
+            <p id="employeeWelcome" class="employee-welcome" style="color: #1a7f8b; font-weight: 600; margin-top: 5px; font-size: 1rem;"></p>
         </div>
         
         <form id="stockForm">
@@ -57,12 +58,12 @@
             <div class="button-group">
                 <button type="button" class="btn-add" onclick="addProduct()">➕ إضافة منتج</button>
                 <button type="button" class="btn-clear" onclick="clearForm()">🗑️ مسح</button>
-                <button type="button" class="btn-back" onclick="window.location.href='index.html'">🏠 الرجوع</button>
+                <button type="button" class="btn-back" onclick="window.location.href='home.html'">🏠 الرجوع</button>
             </div>
 
             <!-- قائمة المنتجات المضافة -->
             <div id="addedProductsList" class="added-products-list" style="display: none;">
-                <h3>المنتجات المضافة:</h3>
+                <h3>المنتجات المدخلة:</h3>
                 <div id="productsContainer"></div>
                 <div class="send-button-container">
                     <button type="button" class="btn-send" onclick="sendToGoogleSheets()">📥 إرسال جميع البيانات</button>
@@ -118,7 +119,7 @@
         <div class="modal-content">
             <h2>⚠️ خطأ في الربط مع Google Sheets</h2>
             <p>لم يتم تعيين رابط Google Apps Script.<br>يرجى الذهاب إلى صفحة الإعدادات أولاً.</p>
-            <button onclick="window.location.href='index.html'" class="btn-back-modal">الرجوع للصفحة الرئيسية</button>
+            <button onclick="window.location.href='home.html'" class="btn-back-modal">الرجوع للصفحة الرئيسية</button>
         </div>
     </div>
     <script>
@@ -499,6 +500,9 @@
                 return;
             }
             
+            // الحصول على اسم الموظف من sessionStorage
+            const employeeName = sessionStorage.getItem('employeeName') || 'غير محدد';
+            
             // إنشاء كائن المنتج
             const productItem = {
                 id: Date.now(), // معرف فريد
@@ -507,7 +511,8 @@
                 product: product,
                 quantity: quantity,
                 unit: unit || 'قطعة',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                employeeName: employeeName
             };
             
             // إضافة المنتج للقائمة
@@ -543,6 +548,7 @@
                     <div class="product-info">
                         <div class="product-name">${item.product}</div>
                         <div class="product-details">الكمية: ${item.quantity} ${item.unit}</div>
+                        <div class="product-employee" style="display: none;">${item.employeeName || 'غير محدد'}</div>
                     </div>
                     <button class="remove-btn" onclick="removeProduct(${item.id})" title="حذف المنتج">❌</button>
                 `;
@@ -595,6 +601,24 @@
 
         // دالة إرسال البيانات إلى Google Sheets
         async function sendToGoogleSheets() {
+            // ==================== كود التشخيص ====================
+            console.log('='.repeat(60));
+            console.log('🔍 بدء تشخيص المشكلة:');
+            console.log('1️⃣ اسم الموظف في sessionStorage:', sessionStorage.getItem('employeeName'));
+            console.log('2️⃣ عدد المنتجات:', addedProducts.length);
+            console.log('3️⃣ بيانات المنتجات:');
+            addedProducts.forEach((item, index) => {
+                console.log(`   منتج #${index + 1}:`, {
+                    product: item.product,
+                    quantity: item.quantity,
+                    employeeName: item.employeeName,
+                    hasEmployeeName: !!item.employeeName,
+                    employeeNameValue: item.employeeName || 'غير موجود'
+                });
+            });
+            console.log('='.repeat(60));
+            // ==================== نهاية التشخيص ====================
+            
             if (addedProducts.length === 0) {
                 alert('يرجى إضافة منتجات أولاً');
                 return;
@@ -615,53 +639,97 @@
                 // إظهار رسالة التحميل
                 showMessage('info', '📥 جاري إرسال البيانات...');
                 
-                // تحويل البيانات إلى معاملات URL للإرسال عبر GET
-                const dataParams = addedProducts.map((item, index) => {
-                    return `data[${index}][date]=${encodeURIComponent(item.date)}&` +
-                           `data[${index}][projectName]=${encodeURIComponent(item.projectName)}&` +
-                           `data[${index}][product]=${encodeURIComponent(item.product)}&` +
-                           `data[${index}][quantity]=${encodeURIComponent(item.quantity)}&` +
-                           `data[${index}][unit]=${encodeURIComponent(item.unit)}&` +
-                           `data[${index}][timestamp]=${encodeURIComponent(item.timestamp)}`;
-                }).join('&');
+                console.log('🚀 ========== بدء الإرسال ==========');
+                console.log('📊 عدد المنتجات:', addedProducts.length);
                 
-                // إرسال البيانات عبر GET بدلاً من POST
-                const url = `${GOOGLE_SCRIPT_URL}?action=addStockIn&count=${addedProducts.length}&${dataParams}`;
+                let successCount = 0;
+                let failedCount = 0;
                 
-                console.log('إرسال البيانات إلى:', url);
-                console.log('عدد المنتجات:', addedProducts.length);
-                
-                // إعداد timeout للطلب
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 ثانية
-                
-                const response = await fetch(url, {
-                    method: 'GET',
-                    mode: 'cors',
-                    signal: controller.signal,
-                    headers: {
-                        'Accept': 'application/json'
+                // إرسال كل منتج بطلب منفصل
+                for (let i = 0; i < addedProducts.length; i++) {
+                    const item = addedProducts[i];
+                    
+                    // بناء URL مع البيانات
+                    const url = `${GOOGLE_SCRIPT_URL}?action=addStockIn&count=1` +
+                        `&data[0][date]=${encodeURIComponent(item.date)}` +
+                        `&data[0][projectName]=${encodeURIComponent(item.projectName)}` +
+                        `&data[0][product]=${encodeURIComponent(item.product)}` +
+                        `&data[0][quantity]=${encodeURIComponent(item.quantity)}` +
+                        `&data[0][unit]=${encodeURIComponent(item.unit)}` +
+                        `&data[0][timestamp]=${encodeURIComponent(item.timestamp)}` +
+                        `&data[0][employeeName]=${encodeURIComponent(item.employeeName || 'غير محدد')}`;
+                    
+                    console.log(`\n📦 إرسال منتج ${i + 1}/${addedProducts.length}:`, item.product);
+                    console.log('👤 اسم الموظف:', item.employeeName);
+                    
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 15000);
+                        
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            mode: 'cors',
+                            signal: controller.signal
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        
+                        if (!response.ok) {
+                            throw new Error(`خطأ ${response.status}`);
+                        }
+                        
+                        const responseText = await response.text();
+                        console.log(`📄 نص الرد الخام للمنتج ${i + 1}:`, responseText);
+                        
+                        const result = JSON.parse(responseText);
+                        
+                        console.log(`📥 ========== رد الخادم للمنتج ${i + 1} ==========`);
+                        console.log('🔹 success:', result.success);
+                        console.log('🔹 message:', result.message);
+                        console.log('🔹 rowsAdded:', result.rowsAdded);
+                        console.log('🔹 sheetName:', result.sheetName);
+                        console.log('🔹 totalItems:', result.totalItems);
+                        
+                        if (result.debugInfo) {
+                            console.log('🐛 ========== DEBUG INFO ==========');
+                            console.log('عدد العناصر في debugInfo:', result.debugInfo.length);
+                            result.debugInfo.forEach((debug, idx) => {
+                                console.log(`\n🔸 عنصر ${idx}:`);
+                                console.log('  - index:', debug.index);
+                                console.log('  - employeeName:', debug.employeeName);
+                                console.log('  - جميع المفاتيح:', Object.keys(debug));
+                                console.log('  - جميع القيم:', debug);
+                            });
+                            console.log('==================================');
+                        } else {
+                            console.warn('⚠️ لا يوجد debugInfo في الرد!');
+                        }
+                        
+                        console.log('🔹 الرد الكامل (JSON):', JSON.stringify(result, null, 2));
+                        console.log('===============================================\n');
+                        
+                        if (result.success) {
+                            successCount++;
+                            console.log(`✅ نجح منتج ${i + 1}`);
+                        } else {
+                            failedCount++;
+                            console.error(`❌ فشل منتج ${i + 1}:`, result.error);
+                        }
+                        
+                    } catch (error) {
+                        failedCount++;
+                        console.error(`❌ خطأ في منتج ${i + 1}:`, error.message);
                     }
-                });
-                
-                clearTimeout(timeoutId);
-                
-                if (!response.ok) {
-                    throw new Error(`خطأ في الخادم: ${response.status} - ${response.statusText}`);
                 }
                 
-                const responseText = await response.text();
-                console.log('رد الخادم:', responseText);
+                console.log('\n========== النتيجة النهائية ==========');
+                console.log('✅ نجح:', successCount);
+                console.log('❌ فشل:', failedCount);
+                console.log('======================================');
                 
-                let result;
-                try {
-                    result = JSON.parse(responseText);
-                } catch (parseError) {
-                    throw new Error('رد الخادم ليس بصيغة JSON صحيحة');
-                }
-                
-                if (result.success) {
-                    showMessage('success', `✅ تم إرسال ${addedProducts.length} منتج بنجاح!`);
+                if (successCount > 0) {
+                    showMessage('success', `✅ تم إرسال ${successCount} منتج بنجاح!` + 
+                        (failedCount > 0 ? ` (${failedCount} فشل)` : ''));
                     
                     // مسح القائمة بعد الإرسال الناجح
                     addedProducts = [];
@@ -671,7 +739,7 @@
                     document.getElementById('date').value = new Date().toISOString().split('T')[0];
                     
                 } else {
-                    throw new Error(result.error || 'فشل في إرسال البيانات');
+                    throw new Error('فشل في إرسال جميع المنتجات');
                 }
                 
             } catch (error) {
@@ -896,6 +964,19 @@
                 productSelect.appendChild(option);
             });
         });
+
+        // عرض اسم الموظف
+        function displayEmployeeName() {
+            const employeeName = sessionStorage.getItem('employeeName');
+            const welcomeElement = document.getElementById('employeeWelcome');
+            
+            if (employeeName && welcomeElement) {
+                welcomeElement.textContent = `مرحباً ${employeeName}`;
+            }
+        }
+
+        // استدعاء عرض اسم الموظف عند تحميل الصفحة
+        window.addEventListener('load', displayEmployeeName);
 
         // إغلاق الماسح عند الضغط على Escape
         document.addEventListener('keydown', function(e) {

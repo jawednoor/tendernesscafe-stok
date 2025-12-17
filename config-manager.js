@@ -8,14 +8,30 @@ const ConfigManager = {
     // تحميل الإعدادات من localStorage أو الملف
     async loadConfig() {
         try {
-            // المحاولة 1: تحميل من localStorage أولاً (أسرع)
+            // المحاولة 1: تحميل من السيرفر /api/config (الأولوية)
+            try {
+                const response = await fetch('http://localhost:5500/api/config');
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        console.log('✅ تم تحميل الإعدادات من السيرفر /api/config');
+                        // حفظ في localStorage للوصول السريع
+                        this.saveToLocalStorage(result.data);
+                        return result.data;
+                    }
+                }
+            } catch (serverError) {
+                console.warn('⚠️ السيرفر غير متصل، محاولة التحميل من localStorage');
+            }
+
+            // المحاولة 2: تحميل من localStorage (fallback)
             const localConfig = this.loadFromLocalStorage();
             if (localConfig && localConfig.googleAppsScriptUrl) {
                 console.log('✅ تم تحميل الإعدادات من localStorage');
                 return localConfig;
             }
 
-            // المحاولة 2: تحميل من ملف config.json
+            // المحاولة 3: تحميل من ملف config.json مباشرة (fallback)
             const response = await fetch(this.configFile);
             if (response.ok) {
                 const fileConfig = await response.json();

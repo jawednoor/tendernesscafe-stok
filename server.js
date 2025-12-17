@@ -12,7 +12,7 @@ const zlib = require('zlib');
 // ========================================
 // ⚙️ الإعدادات
 // ========================================
-const PORT = 3000;
+const PORT = 5500;
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 
 // تخزين مؤقت للإعدادات
@@ -132,6 +132,105 @@ const server = http.createServer((req, res) => {
 
     // ========================================
     // 🔗 API Endpoints
+    // ========================================
+    
+    // 🆕 GET /api/proxy-users - Proxy لجلب أكواد الموظفين من Google Apps Script
+    if (pathname === '/api/proxy-users' && method === 'GET') {
+        const config = readConfig();
+        const scriptUrl = config && config.googleAppsScriptUrl;
+        if (!scriptUrl) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: 'Google Apps Script URL غير موجود في الإعدادات' }));
+            return;
+        }
+        const targetUrl = scriptUrl + '?type=users';
+        const https = require('https');
+        
+        // دالة للتعامل مع redirects
+        const makeRequest = (urlString, maxRedirects = 5) => {
+            if (maxRedirects === 0) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: 'Too many redirects' }));
+                return;
+            }
+            
+            https.get(urlString, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (apiRes) => {
+                // التعامل مع redirect
+                if (apiRes.statusCode >= 300 && apiRes.statusCode < 400 && apiRes.headers.location) {
+                    console.log('🔄 Redirect to:', apiRes.headers.location);
+                    makeRequest(apiRes.headers.location, maxRedirects - 1);
+                    return;
+                }
+                
+                let data = '';
+                apiRes.on('data', chunk => data += chunk);
+                apiRes.on('end', () => {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(data);
+                });
+            }).on('error', (e) => {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            });
+        };
+        
+        makeRequest(targetUrl);
+        return;
+    }
+    
+    // 🆕 GET /api/proxy-user-info - Proxy لجلب معلومات موظف محدد
+    if (pathname === '/api/proxy-user-info' && method === 'GET') {
+        const config = readConfig();
+        const scriptUrl = config && config.googleAppsScriptUrl;
+        const userCode = parsedUrl.query.code;
+        
+        if (!scriptUrl) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: 'Google Apps Script URL غير موجود في الإعدادات' }));
+            return;
+        }
+        
+        if (!userCode) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: 'كود الموظف مطلوب' }));
+            return;
+        }
+        
+        const targetUrl = scriptUrl + '?type=userInfo&code=' + encodeURIComponent(userCode);
+        const https = require('https');
+        
+        // دالة للتعامل مع redirects
+        const makeRequest = (urlString, maxRedirects = 5) => {
+            if (maxRedirects === 0) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: 'Too many redirects' }));
+                return;
+            }
+            
+            https.get(urlString, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (apiRes) => {
+                // التعامل مع redirect
+                if (apiRes.statusCode >= 300 && apiRes.statusCode < 400 && apiRes.headers.location) {
+                    console.log('🔄 Redirect to:', apiRes.headers.location);
+                    makeRequest(apiRes.headers.location, maxRedirects - 1);
+                    return;
+                }
+                
+                let data = '';
+                apiRes.on('data', chunk => data += chunk);
+                apiRes.on('end', () => {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(data);
+                });
+            }).on('error', (e) => {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            });
+        };
+        
+        makeRequest(targetUrl);
+        return;
+    }
+
     // 5️⃣ GET /api/check-script-url - تحقق من وجود وصحة رابط Google Apps Script
     if (pathname === '/api/check-script-url' && method === 'GET') {
         const config = readConfig();
@@ -259,6 +358,12 @@ const server = http.createServer((req, res) => {
         serveStaticFile(res, path.join(__dirname, 'index.html'));
         return;
     }
+    
+    // الصفحة الرئيسية للنظام (بعد تسجيل الدخول)
+    if (pathname === '/home.html') {
+        serveStaticFile(res, path.join(__dirname, 'home.html'));
+        return;
+    }
 
     // الملفات الأخرى
     const filePath = path.join(__dirname, pathname);
@@ -318,10 +423,11 @@ server.listen(PORT, () => {
     console.log(`   GET    /api/status          - حالة السيرفر`);
     console.log('');
     console.log('📄 الصفحات:');
-    console.log(`   http://localhost:${PORT}/index.html`);
-    console.log(`   http://localhost:${PORT}/0541.html`);
-    console.log(`   http://localhost:${PORT}/Stock_In.html`);
-    console.log(`   http://localhost:${PORT}/Stock_Out.html`);
+    console.log(`   http://localhost:${PORT}/                - صفحة تسجيل الدخول`);
+    console.log(`   http://localhost:${PORT}/home.html       - الصفحة الرئيسية`);
+    console.log(`   http://localhost:${PORT}/0541.html       - الإعدادات`);
+    console.log(`   http://localhost:${PORT}/Stock_In.html   - توريد المخزون`);
+    console.log(`   http://localhost:${PORT}/Stock_Out.html  - تصدير المخزون`);
     console.log('');
     console.log('⏹️  اضغط Ctrl+C لإيقاف السيرفر');
     console.log('========================================');

@@ -1,8 +1,9 @@
 // Service Worker لتطبيق Cafe Stock PWA
-const CACHE_NAME = 'cafe-stock-v1.0.0';
+const CACHE_NAME = 'cafe-stock-v1.0.2';
 const urlsToCache = [
   '/',
   '/index.html',
+  '/home.html',
   '/styles.css',
   '/img/logo.png',
   '/Stock_In.html',
@@ -52,6 +53,12 @@ self.addEventListener('activate', event => {
 
 // تحسين إدارة الكاش باستخدام استراتيجية stale-while-revalidate
 self.addEventListener('fetch', event => {
+  // استثناء طلبات API من الكاش - دائماً جلب من الشبكة
+  if (event.request.url.includes('/api/')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
       const fetchPromise = fetch(event.request).then(networkResponse => {

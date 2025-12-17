@@ -1,17 +1,29 @@
 
-const SPREADSHEET_ID = 'ضع_هنا_معرف_جدولك_الخاص';
+
+const SPREADSHEET_ID = '1I0KGM1pE7hFbkZvTc3MK50Ri-OOMzcoPZsuvuQkGzoY'; // معرف الجدول الصحيح
+
 
 
 function doGet(e) {
   try {
-    // فتح الجدول
-    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-
-    // الحصول على نوع العملية المطلوبة
     const action = e.parameter.action;
     const dataType = e.parameter.type || 'projects';
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
 
-    // معالجة العمليات المختلفة
+    // جلب أكواد الموظفين من شيت user عمود A
+    if (dataType === 'users') {
+      return getUserCodes(spreadsheet);
+    }
+    
+    // جلب معلومات موظف محدد بناءً على الكود
+    if (dataType === 'userInfo') {
+      const userCode = e.parameter.code;
+      if (!userCode) {
+        throw new Error('كود الموظف مطلوب');
+      }
+      return getUserInfo(spreadsheet, userCode);
+    }
+
     if (action === 'addStockOut') {
       return handleAddStockOut(e, spreadsheet);
     } else if (action === 'addStockIn') {
@@ -35,7 +47,6 @@ function doGet(e) {
     } else {
       throw new Error('نوع البيانات غير مدعوم');
     }
-
   } catch (error) {
     return ContentService
       .createTextOutput(JSON.stringify({
@@ -46,6 +57,56 @@ function doGet(e) {
   }
 }
 
+// جلب أكواد الموظفين من شيت user عمود A
+function getUserCodes(spreadsheet) {
+  const sheet = spreadsheet.getSheetByName('user');
+  if (!sheet) {
+    throw new Error('Sheet "user" not found');
+  }
+  const range = sheet.getRange('A2:A');
+  const values = range.getValues();
+  const codes = values.flat().filter(code => code && code.toString().trim() !== '');
+  return ContentService
+    .createTextOutput(JSON.stringify({ success: true, data: codes }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// جلب معلومات موظف محدد بناءً على الكود (VLOOKUP)
+function getUserInfo(spreadsheet, userCode) {
+  const sheet = spreadsheet.getSheetByName('user');
+  if (!sheet) {
+    throw new Error('Sheet "user" not found');
+  }
+  
+  const range = sheet.getRange('A2:B');
+  const values = range.getValues();
+  
+  // البحث عن الموظف بناءً على الكود (عمود A)
+  for (let i = 0; i < values.length; i++) {
+    const code = values[i][0] ? values[i][0].toString().trim() : '';
+    const name = values[i][1] ? values[i][1].toString().trim() : '';
+    
+    if (code === userCode.toString().trim()) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ 
+          success: true, 
+          data: {
+            code: code,
+            name: name
+          }
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+  
+  return ContentService
+    .createTextOutput(JSON.stringify({ 
+      success: false, 
+      error: 'الموظف غير موجود'
+    }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 function doPost(e) {
   try {
     // فتح الجدول
@@ -54,6 +115,12 @@ function doPost(e) {
     // تحليل البيانات المرسلة
     const postData = JSON.parse(e.postData.contents);
     const action = postData.action;
+    
+    Logger.log('=== POST REQUEST RECEIVED ===');
+    Logger.log('Action: ' + action);
+    Logger.log('Data count: ' + (postData.data ? postData.data.length : 0));
+    Logger.log('Full POST data: ' + JSON.stringify(postData));
+    Logger.log('============================');
 
     if (action === 'addStockOut') {
       return addStockOutData(spreadsheet, postData.data);
@@ -64,6 +131,7 @@ function doPost(e) {
     }
 
   } catch (error) {
+    Logger.log('ERROR in doPost: ' + error.toString());
     return ContentService
       .createTextOutput(JSON.stringify({
         success: false,
@@ -80,22 +148,38 @@ function doPost(e) {
 function handleAddStockOut(e, spreadsheet) {
   const count = parseInt(e.parameter.count) || 0;
   const stockData = [];
-
+  
+  Logger.log('=== RECEIVED PARAMETERS ===');
+  Logger.log('Count: ' + count);
+  Logger.log('All keys: ' + Object.keys(e.parameter).join(', '));
+  
   // استخراج البيانات من المعاملات
   for (let i = 0; i < count; i++) {
+    const empName = e.parameter[`data[${i}][employeeName]`];
+    
+    Logger.log(`\n--- Item ${i} ---`);
+    Logger.log('employeeName param: ' + empName);
+    Logger.log('Is undefined? ' + (empName === undefined));
+    Logger.log('Is empty? ' + (empName === ''));
+    
     const item = {
       date: e.parameter[`data[${i}][date]`] || '',
       projectName: e.parameter[`data[${i}][projectName]`] || '',
       product: e.parameter[`data[${i}][product]`] || '',
       quantity: e.parameter[`data[${i}][quantity]`] || '',
       unit: e.parameter[`data[${i}][unit]`] || '',
-      timestamp: e.parameter[`data[${i}][timestamp]`] || ''
+      timestamp: e.parameter[`data[${i}][timestamp]`] || '',
+      employeeName: empName || 'غير محدد'
     };
+    
+    Logger.log('Final employeeName: ' + item.employeeName);
 
     if (item.date && item.projectName && item.product && item.quantity) {
       stockData.push(item);
     }
   }
+  
+  Logger.log('=== TOTAL ITEMS: ' + stockData.length + ' ===');
 
   return addStockOutData(spreadsheet, stockData);
 }
@@ -103,17 +187,29 @@ function handleAddStockOut(e, spreadsheet) {
 function handleAddStockIn(e, spreadsheet) {
   const count = parseInt(e.parameter.count) || 0;
   const stockData = [];
+  
+  Logger.log('=== STOCK IN - RECEIVED PARAMETERS ===');
+  Logger.log('Count: ' + count);
+  Logger.log('All keys: ' + Object.keys(e.parameter).join(', '));
 
   // استخراج البيانات من المعاملات
   for (let i = 0; i < count; i++) {
+    const empName = e.parameter[`data[${i}][employeeName]`];
+    
+    Logger.log(`\n--- Item ${i} ---`);
+    Logger.log('employeeName param: ' + empName);
+    
     const item = {
       date: e.parameter[`data[${i}][date]`] || '',
       projectName: e.parameter[`data[${i}][projectName]`] || '',
       product: e.parameter[`data[${i}][product]`] || '',
       quantity: e.parameter[`data[${i}][quantity]`] || '',
       unit: e.parameter[`data[${i}][unit]`] || '',
-      timestamp: e.parameter[`data[${i}][timestamp]`] || ''
+      timestamp: e.parameter[`data[${i}][timestamp]`] || '',
+      employeeName: empName || 'غير محدد'
     };
+    
+    Logger.log('Final employeeName: ' + item.employeeName);
 
     if (item.date && item.projectName && item.product && item.quantity) {
       stockData.push(item);
@@ -162,7 +258,7 @@ function createStockSheet(spreadsheet, sheetName) {
   const sheet = spreadsheet.insertSheet(sheetName);
 
   // إضافة أعمدة العناوين
-  const headers = ['التاريخ', 'اسم المشروع', 'المنتج', 'الكمية', 'الوحدة', 'وقت الإدخال'];
+  const headers = ['التاريخ', 'اسم المشروع', 'المنتج', 'الكمية', 'الوحدة', 'وقت الإدخال', 'اسم الموظف'];
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
   // تنسيق العناوين
@@ -197,12 +293,13 @@ function insertStockData(sheet, stockData, sheetName) {
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit'
-    })
+    }),
+    item.employeeName || 'غير محدد'
   ]);
 
   // إدراج البيانات
   if (rowsData.length > 0) {
-    const range = sheet.getRange(startRow, 1, rowsData.length, 6);
+    const range = sheet.getRange(startRow, 1, rowsData.length, 7);
     range.setValues(rowsData);
 
     // تنسيق البيانات
@@ -211,7 +308,7 @@ function insertStockData(sheet, stockData, sheetName) {
 
     // تلوين الصفوف بالتناوب
     for (let i = 0; i < rowsData.length; i++) {
-      const rowRange = sheet.getRange(startRow + i, 1, 1, 6);
+      const rowRange = sheet.getRange(startRow + i, 1, 1, 7);
       if ((startRow + i) % 2 === 0) {
         rowRange.setBackground('#F0FFFF');
       }
@@ -221,12 +318,23 @@ function insertStockData(sheet, stockData, sheetName) {
     sheet.autoResizeColumns(1, 6);
   }
 
+  // إضافة معلومات التشخيص
+  const debugInfo = stockData.map((item, index) => {
+    Logger.log(`Item ${index}: employeeName = "${item.employeeName}"`);
+    return {
+      index: index,
+      employeeName: item.employeeName || 'NULL'
+    };
+  });
+
   return ContentService
     .createTextOutput(JSON.stringify({
       success: true,
       message: `تم إدراج ${rowsData.length} عنصر بنجاح في شيت ${sheetName}`,
       rowsAdded: rowsData.length,
-      sheetName: sheetName
+      sheetName: sheetName,
+      debugInfo: debugInfo,
+      totalItems: stockData.length
     }))
     .setMimeType(ContentService.MimeType.JSON);
 }

@@ -799,6 +799,9 @@
         });
 
         // وظائف ماسح الباركود
+        let barcodeDetectionCount = {};
+        let minDetections = 3; // عدد القراءات المطلوبة للتأكد
+        
         function startBarcodeScanner() {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 showMessage('error', '❌ الكاميرا غير متوفرة في هذا المتصفح');
@@ -808,6 +811,7 @@
             const scannerElement = document.getElementById('barcodeScanner');
             scannerElement.style.display = 'flex';
             scannerActive = true;
+            barcodeDetectionCount = {}; // إعادة تعيين العداد
 
             Quagga.init({
                 inputStream: {
@@ -815,28 +819,27 @@
                     type: "LiveStream",
                     target: document.querySelector('#scannerVideo'),
                     constraints: {
-                        width: 500,
-                        height: 300,
+                        width: 1280,
+                        height: 720,
                         facingMode: "environment" // الكاميرا الخلفية
                     }
                 },
+                frequency: 10, // عدد المحاولات في الثانية
                 locator: {
-                    patchSize: "medium",
-                    halfSample: true
+                    patchSize: "large", // حجم أكبر للدقة
+                    halfSample: false // دقة كاملة بدون تقليل
                 },
-                numOfWorkers: 2,
+                numOfWorkers: 4, // عدد أكبر من العمال
                 decoder: {
                     readers: [
-                        "code_128_reader",
-                        "ean_reader",
+                        "ean_reader", // الأولوية لـ EAN
                         "ean_8_reader",
+                        "code_128_reader",
                         "code_39_reader",
-                        "code_39_vin_reader",
-                        "codabar_reader",
                         "upc_reader",
-                        "upc_e_reader",
-                        "i2of5_reader"
-                    ]
+                        "upc_e_reader"
+                    ],
+                    multiple: false // قراءة باركود واحد فقط
                 },
                 locate: true
             }, function(err) {
@@ -850,18 +853,40 @@
                 showMessage('success', '📷 تم تشغيل الكاميرا بنجاح');
             });
 
-            // معالج قراءة الباركود
+            // معالج قراءة الباركود مع التحقق من الجودة
             Quagga.onDetected(function(data) {
                 const barcode = data.codeResult.code;
-                document.getElementById('barcodeInput').value = barcode;
-                stopBarcodeScanner();
+                const quality = data.codeResult.quality || 0;
                 
-                // البحث التلقائي بعد المسح
-                setTimeout(() => {
-                    searchByBarcode();
-                }, 500);
+                console.log('📱 تم اكتشاف باركود:', barcode, 'جودة:', quality);
                 
-                showMessage('success', `📱 تم مسح الباركود: ${barcode}`);
+                // التحقق من جودة القراءة (يجب أن تكون أعلى من 75)
+                if (quality < 75) {
+                    console.warn('⚠️ جودة القراءة منخفضة:', quality);
+                    return;
+                }
+                
+                // عد مرات اكتشاف نفس الباركود
+                if (!barcodeDetectionCount[barcode]) {
+                    barcodeDetectionCount[barcode] = 0;
+                }
+                barcodeDetectionCount[barcode]++;
+                
+                // إذا تم قراءة الباركود عدة مرات متتالية، نقبله
+                if (barcodeDetectionCount[barcode] >= minDetections) {
+                    document.getElementById('barcodeInput').value = barcode;
+                    stopBarcodeScanner();
+                    
+                    // البحث التلقائي بعد المسح
+                    setTimeout(() => {
+                        searchByBarcode();
+                    }, 500);
+                    
+                    showMessage('success', `📱 تم مسح الباركود: ${barcode}`);
+                } else {
+                    // إظهار مؤشر التقدم
+                    console.log(`📊 تقدم القراءة: ${barcodeDetectionCount[barcode]}/${minDetections}`);
+                }
             });
         }
 

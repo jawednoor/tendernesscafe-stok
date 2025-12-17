@@ -2,7 +2,7 @@
   "name": "نظام إدارة مخزون الكافيه",
   "short_name": "Cafe Stock",
   "description": "نظام إدارة مخزون احترافي للكافيه مع دعم الباركود والمشاريع",
-  "start_url": "/",
+  "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#1a7f8b",
   "theme_color": "#20B2AA",

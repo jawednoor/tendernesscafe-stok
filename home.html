@@ -24,6 +24,12 @@
     <title>Cafe Stock - نظام إدارة المخزون</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <script>
+        // التحقق من تسجيل الدخول عند تحميل الصفحة
+        if (!sessionStorage.getItem('isAuthenticated')) {
+            window.location.href = 'index.html';
+        }
+    </script>
 <body>
     <div class="main-container">
         <div class="welcome-card">
